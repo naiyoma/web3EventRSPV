@@ -16,8 +16,8 @@ contract Web3RSVP {
     );
 
     event NewRSVP(bytes32 eventID, address attendeeAddress);
-    event confirmedAttendee(bytes32 eventId, address attendeeAddress);
-    event DepositPaidOut(bytes eventID);
+    event confirmedAttendee(bytes32 eventID, address attendeeAddress);
+    event DepositPaidOut(bytes32 eventID);
 
     struct CreateEvent {
        bytes32 eventId;
@@ -49,7 +49,7 @@ contract Web3RSVP {
             maxCapacity
         )
     );
-    require(idToEvent[eventId].eventTimestamp == 0, "Already Registered");
+  
 
     address[] memory confirmedRSVPs;
     address[] memory claimedRSVPs;
@@ -97,16 +97,18 @@ contract Web3RSVP {
         }
 
         myEvent.confirmedRSVPs.push(payable(msg.sender));
+        
         emit NewRSVP(eventId, msg.sender);
 
    }
 
-    function confirmeAlldAttendee(bytes eventId) external {
+    function confirmeAlldAttendee(bytes32 eventId) external {
         CreateEvent memory myEvent = idToEvent[eventId];
+
         require(msg.sender == myEvent.eventOwner, "Not Authorized");
 
-    for (uint8 i = 0; i < myEvent.confirmedRSVPs.length; i++) {
-        confirmedAttendee(eventId, myEvent.confirmedRSPVs[i]);
+        for (uint8 i = 0; i < myEvent.confirmedRSVPs.length; i++) {
+            confirmAttendee(eventId, myEvent.confirmedRSVPs[i]);
     }
    }
 
@@ -149,6 +151,8 @@ contract Web3RSVP {
    function withdrawUnclaimedDeposits(bytes32 eventId)  external {
         CreateEvent memory myEvent = idToEvent[eventId];
 
+        require(!myEvent.paidOut, "Already paid out");
+
         require (
             block.timestamp >= (myEvent.eventTimestamp + 7 days),
             "Too early"
@@ -156,20 +160,22 @@ contract Web3RSVP {
 
         require(msg.sender == myEvent.eventOwner, "Must Be Event Owner");
 
-        uint256 unclaimed = myEvent.confirmedRSPVs.length - myEvent.claimedRSVPS.length;
+        uint256 unclaimed = myEvent.confirmedRSVPs.length - myEvent.claimedRSVPs.length;
 
         uint256 payout = unclaimed * myEvent.deposit;
 
         myEvent.paidOut = true;
 
-        (bool sent) = msg.sender{value: payout}("");
+        (bool sent, ) = msg.sender.call{value: payout}("");
 
         if (!sent) {
-            myEvent.pointOut = false;
+            myEvent.paidOut = false;
         
         }
         require(sent, "Failed to send Ether");
 
         emit DepositPaidOut(eventId);
+
+        
    }
 }   
